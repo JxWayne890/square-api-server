@@ -3,11 +3,12 @@ const fetch = require('node-fetch');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Use your Production Access Token via environment variable
 const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 
 app.get('/products', async (req, res) => {
   try {
-    const response = await fetch('https://connect.squareupsandbox.com/v2/catalog/list', {
+    const response = await fetch('https://connect.squareup.com/v2/catalog/list', {
       method: 'GET',
       headers: {
         'Square-Version': '2024-04-17',
@@ -17,11 +18,14 @@ app.get('/products', async (req, res) => {
     });
 
     const data = await response.json();
-    console.log('🔍 Square Response:', JSON.stringify(data, null, 2)); // Debugging output
-    const products = data.objects || [];
+
+    console.log('🧾 Raw Square Response:', JSON.stringify(data, null, 2)); // optional debugging
+
+    const products = data.objects?.filter(obj => obj.type === 'ITEM') || [];
     res.json(products);
+
   } catch (err) {
-    console.error('❌ Square API error:', err);
+    console.error('❌ Square API Error:', err);
     res.status(500).json({ error: 'Square API error' });
   }
 });
