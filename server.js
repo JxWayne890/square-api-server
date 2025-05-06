@@ -1,35 +1,67 @@
-const express = require('express');
-const fetch = require('node-fetch');
-const app = express();
+/*******************************
+ *  server.js  – Square Catalog
+ *******************************/
+
+import express from "express";
+import cors from "cors";
+
+const app  = express();
 const PORT = process.env.PORT || 3000;
+const ACCESS_TOKEN = process.env.ACCESS_TOKEN;   // ←  Production token
 
-// Use your Production Access Token via environment variable
-const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
+/* -------------------------------------------------
+ *  Middleware
+ * ------------------------------------------------*/
+app.use(cors());                 //  Allow all origins (CORS)
+app.use(express.json());         //  For future POST endpoints, if needed
 
-app.get('/products', async (req, res) => {
+/* -------------------------------------------------
+ *  Health‑check / root
+ * ------------------------------------------------*/
+app.get("/", (_, res) =>
+  res.send("Square catalog API is running 🚀")
+);
+
+/* -------------------------------------------------
+ *  GET /products  →  live Square items
+ * ------------------------------------------------*/
+app.get("/products", async (_, res) => {
   try {
-    const response = await fetch('https://connect.squareup.com/v2/catalog/list', {
-      method: 'GET',
-      headers: {
-        'Square-Version': '2024-04-17',
-        'Authorization': `Bearer ${ACCESS_TOKEN}`,
-        'Content-Type': 'application/json'
+    const sqRes = await fetch(
+      "https://connect.squareup.com/v2/catalog/list",
+      {
+        method: "GET",
+        headers: {
+          "Square-Version": "2024-04-17",
+          Authorization:    `Bearer ${ACCESS_TOKEN}`,
+          "Content-Type":   "application/json"
+        }
       }
-    });
+    );
 
-    const data = await response.json();
+    if (!sqRes.ok) {
+      // Forward Square error message
+      const text = await sqRes.text();
+      return res.status(sqRes.status).send(text);
+    }
 
-    console.log('🧾 Raw Square Response:', JSON.stringify(data, null, 2)); // optional debugging
+    const data = await sqRes.json();
+    // console.log("🔍 Square raw:", JSON.stringify(data, null, 2));
 
-    const products = data.objects?.filter(obj => obj.type === 'ITEM') || [];
-    res.json(products);
+    const items = (data.objects ?? []).filter(
+      (obj) => obj.type === "ITEM"
+    );
 
+    res.json(items);
   } catch (err) {
-    console.error('❌ Square API Error:', err);
-    res.status(500).json({ error: 'Square API error' });
+    console.error("❌ Square API error:", err);
+    res.status(500).json({ error: "Square API error" });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-});
+/* -------------------------------------------------
+ *  Start server
+ * ------------------------------------------------*/
+app.listen(PORT, () =>
+  console.log(`✅ Catalog server listening on port ${PORT}`)
+);
